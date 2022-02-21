@@ -1,8 +1,19 @@
 <template>
   <div id="home">
     <v-card>
-      <v-card-title class="d-flex justify-center">
-        {{ dayjs(new Date()).format("dddd MM/DD") }}
+      <v-card-title class="d-flex justify-space-around">
+        <span
+          v-for="day in availableDates"
+          :key="day.selector"
+          @click="selectedDate = day.selector"
+          :style="
+            selectedDate === day.selector
+              ? 'color: orange; font-weight: bolder'
+              : ''
+          "
+        >
+          {{ day.display }}
+        </span>
       </v-card-title>
       <v-card-text>
         <v-list v-if="!loading && this.devs">
@@ -14,7 +25,7 @@
                     {{ dev.name }}
                     <v-icon
                       class="ml-4"
-                      @click.stop="out(dev.id)"
+                      @click.stop="setOut(dev.id)"
                       color="warning"
                     >
                       mdi-account-arrow-right-outline
@@ -22,13 +33,13 @@
                   </v-list-item-title>
                 </v-list-item-content>
                 <v-list-item-action
-                  v-if="!devs[dev.id].out && done[dev.id]"
+                  v-if="!out[dev.id] && done[dev.id]"
                   style="position: absolute"
                 >
                   <v-icon color="success" large> mdi-check </v-icon>
                 </v-list-item-action>
                 <v-list-item-action
-                  v-if="devs[dev.id].out"
+                  v-if="out[dev.id]"
                   style="position: absolute"
                 >
                   <v-icon color="error" large> mdi-close </v-icon>
@@ -42,12 +53,13 @@
                   v-model="dev.notes[selectedDate].yesterday"
                   label="Yesterday"
                   style="width: 50%"
-                  v-if="dayjs().day() !== 4"
+                  :disabled="selectedDate !== today"
                 />
                 <v-text-field
                   v-model="dev.notes[selectedDate].today"
                   label="Today"
                   style="width: 50%"
+                  :disabled="selectedDate !== today"
                 />
                 <v-text-field
                   v-model="dev.notes[selectedDate].blockers"
@@ -55,6 +67,7 @@
                   style="width: 50%"
                   append-outer-icon="mdi-cancel"
                   @click:append-outer="noBlockers(dev.id)"
+                  :disabled="selectedDate !== today"
                 />
               </v-list-item-content>
             </v-list-group>
@@ -88,9 +101,11 @@ export default {
     selectedDate: dayjs().format("MM/DD"),
     today: dayjs().format("MM/DD"),
     loading: false,
+    availableDates: [],
   }),
   async beforeMount() {
     this.loading = true;
+    this.setAvailableDates();
     const activeDevs = await this.$api.getActiveDevs();
     activeDevs.forEach((dev) => {
       this.$set(this.devs, dev.id, {
@@ -126,12 +141,11 @@ export default {
     noBlockers(id) {
       this.devs[id].notes[this.selectedDate].blockers = "N/A";
     },
-    out(id) {
-      const status = this.devs[id].out ? "" : "OUT";
+    setOut(id) {
+      const status = this.out[id] ? "" : "OUT";
       this.devs[id].notes[this.selectedDate].yesterday = status;
       this.devs[id].notes[this.selectedDate].today = status;
       this.devs[id].notes[this.selectedDate].blockers = status;
-      this.$set(this.devs[id], "out", !this.devs[id].out);
     },
     async save() {
       this.loading = true;
@@ -152,15 +166,45 @@ export default {
       }
       this.loading = false;
     },
+    setAvailableDates() {
+      let subtractWeekend = false;
+      for (let i = 0; i < 6; i++) {
+        let day = dayjs().subtract(i, "day");
+        if (day.day() === 0) {
+          // Sunday
+          subtractWeekend = true;
+        }
+        if (subtractWeekend) {
+          day = day.subtract(2, "day");
+        }
+        this.availableDates.push({
+          display: day.format("dddd MM/DD"),
+          selector: day.format("MM/DD"),
+        });
+      }
+      this.availableDates = this.availableDates.reverse();
+    },
   },
   computed: {
     done() {
       const doneStatus = {};
       for (let id in this.devs) {
-        const { yesterday, today, blockers } = this.devs[id].notes[this.today];
+        const { yesterday, today, blockers } =
+          this.devs[id].notes[this.selectedDate];
         doneStatus[id] = ![yesterday, today, blockers].includes("");
       }
       return doneStatus;
+    },
+    out() {
+      const outStatus = {};
+      for (let id in this.devs) {
+        const { yesterday, today, blockers } =
+          this.devs[id].notes[this.selectedDate];
+        outStatus[id] = [yesterday, today, blockers].every(
+          (el) => el === "OUT"
+        );
+      }
+      return outStatus;
     },
   },
 };
