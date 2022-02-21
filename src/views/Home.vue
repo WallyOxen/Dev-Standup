@@ -5,16 +5,16 @@
         {{ dayjs(new Date()).format("dddd MM/DD") }}
       </v-card-title>
       <v-card-text>
-        <v-list>
-          <template v-for="(dev, index) in devs">
-            <v-list-group :key="index">
+        <v-list v-if="!loading && this.devs">
+          <template v-for="dev in devs">
+            <v-list-group :key="dev.id">
               <template v-slot:activator>
                 <v-list-item-content>
                   <v-list-item-title class="d-flex justify-center text-h5 pb-2">
                     {{ dev.name }}
                     <v-icon
                       class="ml-4"
-                      @click.stop="out(index)"
+                      @click.stop="out(dev.id)"
                       color="warning"
                     >
                       mdi-account-arrow-right-outline
@@ -22,49 +22,52 @@
                   </v-list-item-title>
                 </v-list-item-content>
                 <v-list-item-action
-                  v-if="!devs[index].out && done[index]"
+                  v-if="!devs[dev.id].out && done[dev.id]"
                   style="position: absolute"
                 >
                   <v-icon color="success" large> mdi-check </v-icon>
                 </v-list-item-action>
                 <v-list-item-action
-                  v-if="devs[index].out"
+                  v-if="devs[dev.id].out"
                   style="position: absolute"
                 >
                   <v-icon color="error" large> mdi-close </v-icon>
                 </v-list-item-action>
               </template>
               <v-list-item-content
+                v-if="dev.notes[selectedDate]"
                 class="d-flex flex-column justify-space-around"
               >
                 <v-text-field
-                  v-model="dev.yesterday"
+                  v-model="dev.notes[selectedDate].yesterday"
                   label="Yesterday"
                   style="width: 50%"
                   v-if="dayjs().day() !== 4"
                 />
                 <v-text-field
-                  v-model="dev.today"
+                  v-model="dev.notes[selectedDate].today"
                   label="Today"
                   style="width: 50%"
                 />
                 <v-text-field
-                  v-model="dev.blockers"
+                  v-model="dev.notes[selectedDate].blockers"
                   label="Blockers"
                   style="width: 50%"
                   append-outer-icon="mdi-cancel"
-                  @click:append-outer="noBlockers(index)"
+                  @click:append-outer="noBlockers(dev.id)"
                 />
               </v-list-item-content>
             </v-list-group>
-            <v-divider :key="index + 'd'" />
+            <v-divider :key="dev.id + 'd'" />
           </template>
         </v-list>
+        <v-progress-linear v-if="loading" color="purple" indeterminate />
         <v-card-actions class="d-flex justify-center">
           <v-btn
+            v-if="!loading"
             color="primary"
-            :disabled="!done.every((e) => e)"
             @click="save"
+            :disabled="devs[1].notes[today].id !== undefined"
           >
             Save
           </v-btn>
@@ -81,126 +84,83 @@ export default {
   name: "Home",
   data: () => ({
     dayjs,
-    previousData: [],
-    devs: [
-      {
-        name: "Tyler",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Gerald",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Matthew",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Michael",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Kody",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Drew",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Andrew",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Ayman",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Christopher",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-      {
-        name: "Jeff",
-        yesterday: "",
-        today: "",
-        blockers: "",
-      },
-    ],
+    devs: {},
+    selectedDate: dayjs().format("MM/DD"),
+    today: dayjs().format("MM/DD"),
+    loading: false,
   }),
-  mounted() {
-    this.previousData = JSON.parse(
-      window.localStorage.getItem("dailyDevNotes")
-    );
-    if (this.previousData === null) {
-      this.previousData = [];
-    }
-    if (this.hasTodaySaved()) {
+  async beforeMount() {
+    this.loading = true;
+    const activeDevs = await this.$api.getActiveDevs();
+    activeDevs.forEach((dev) => {
+      this.$set(this.devs, dev.id, {
+        notes: {},
+        ...dev,
+      });
+    });
+    const previousNotes = await this.$api.getPreviousNotes();
+    previousNotes.forEach((note) => {
       this.$set(
-        this,
-        "devs",
-        this.previousData[this.previousData.length - 1].devs
+        this.devs[note.dev_id].notes,
+        dayjs(note.date).format("MM/DD"),
+        note
       );
+    });
+    for (const id in this.devs) {
+      if (!this.devs[id].notes[this.today]) {
+        this.$set(this.devs[id].notes, this.today, {
+          yesterday: "",
+          today: "",
+          blockers: "",
+        });
+        continue;
+      }
+
+      if (this.devs[id].notes[this.today].today === "OUT") {
+        this.$set(this.devs[id], "out", true);
+      }
     }
-    if (dayjs().day() === 4) {
-      this.devs.forEach((dev) => (dev.yesterday = "MONDAY"));
-    }
+    this.loading = false;
   },
   methods: {
-    noBlockers(index) {
-      this.devs[index].blockers = "N/A";
+    noBlockers(id) {
+      this.devs[id].notes[this.selectedDate].blockers = "N/A";
     },
-    out(index) {
-      const status = this.devs[index].out ? "" : "OUT";
-      this.devs[index].yesterday = status;
-      this.devs[index].today = status;
-      this.devs[index].blockers = status;
-      this.devs[index].out = !this.devs[index].out;
+    out(id) {
+      const status = this.devs[id].out ? "" : "OUT";
+      this.devs[id].notes[this.selectedDate].yesterday = status;
+      this.devs[id].notes[this.selectedDate].today = status;
+      this.devs[id].notes[this.selectedDate].blockers = status;
+      this.$set(this.devs[id], "out", !this.devs[id].out);
     },
-    hasTodaySaved() {
-      return (
-        this.previousData.length > 0 &&
-        this.previousData[this.previousData.length - 1].date ===
-          dayjs().format("MM/DD")
-      );
-    },
-    save() {
-      if (this.hasTodaySaved()) {
-        this.previousData[this.previousData.length - 1].devs = this.devs;
+    async save() {
+      this.loading = true;
+      const data = Object.values(this.devs).map((dev) => {
+        return {
+          ...dev.notes[this.today],
+          dev_id: dev.id,
+          date: dayjs().hour(0).minute(0).second(0).format(),
+        };
+      });
+      const response = await this.$api.saveNotes(data);
+      if (response.length !== data.length) {
+        console.error("Something went wrong, not all data saved!");
       } else {
-        this.previousData.push({
-          date: dayjs().format("MM/DD"),
-          devs: this.devs,
+        response.forEach((res) => {
+          this.$set(this.devs[res.dev_id].notes, this.today, res);
         });
       }
-      window.localStorage.setItem(
-        "dailyDevNotes",
-        JSON.stringify(this.previousData)
-      );
+      this.loading = false;
     },
   },
   computed: {
     done() {
-      return this.devs.map(
-        (dev) => dev.yesterday !== "" && dev.today !== "" && dev.blockers !== ""
-      );
+      const doneStatus = {};
+      for (let id in this.devs) {
+        const { yesterday, today, blockers } = this.devs[id].notes[this.today];
+        doneStatus[id] = ![yesterday, today, blockers].includes("");
+      }
+      return doneStatus;
     },
   },
 };
