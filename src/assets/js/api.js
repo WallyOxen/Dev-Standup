@@ -15,8 +15,20 @@ standupAPI.interceptors.response.use(
 );
 
 export default {
-  getActiveDevs() {
+  addDev(name) {
+    return standupAPI.post("/devs", { name });
+  },
+  getAllDevs() {
     return standupAPI.get("/devs");
+  },
+  getActiveDevs() {
+    return standupAPI.get("/devs/active");
+  },
+  devLeft(id) {
+    return standupAPI.patch("/devs/left", { id });
+  },
+  devJoined(id) {
+    return standupAPI.patch("/devs/joined", { id });
   },
   getPreviousNotes() {
     return standupAPI.get("/notes");
