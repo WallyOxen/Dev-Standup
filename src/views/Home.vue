@@ -1,6 +1,6 @@
 <template>
   <div id="home">
-    <v-card>
+    <v-card width="90vw">
       <v-card-title class="d-flex justify-space-around">
         <span
           v-for="day in availableDates"
@@ -98,14 +98,22 @@ export default {
   data: () => ({
     dayjs,
     devs: {},
-    selectedDate: dayjs().format("MM/DD"),
+    selectedDate: "",
     today: dayjs().format("MM/DD"),
     loading: false,
     availableDates: [],
   }),
   async beforeMount() {
     this.loading = true;
-    this.setAvailableDates();
+
+    let day = dayjs();
+
+    while ([0, 6].includes(day.day())) {
+      day = day.subtract(1, "day");
+    }
+
+    this.selectedDate = day.format("MM/DD");
+
     const activeDevs = await this.$api.getActiveDevs();
     activeDevs.forEach((dev) => {
       this.$set(this.devs, dev.id, {
@@ -135,6 +143,7 @@ export default {
         this.$set(this.devs[id], "out", true);
       }
     }
+    this.setAvailableDates();
     this.loading = false;
   },
   methods: {
@@ -167,19 +176,29 @@ export default {
       this.loading = false;
     },
     setAvailableDates() {
-      let subtractWeekend = false;
+      let day = dayjs().add(1, "day");
       for (let i = 0; i < 6; i++) {
-        let day = dayjs().subtract(i, "day");
+        day = day.subtract(1, "day");
         if (day.day() === 0) {
           // Sunday
-          subtractWeekend = true;
-        }
-        if (subtractWeekend) {
           day = day.subtract(2, "day");
+        }
+        if (day.day() === 6) {
+          // Saturday
+          day = day.subtract(1, "day");
         }
         this.availableDates.push({
           display: day.format("dddd MM/DD"),
           selector: day.format("MM/DD"),
+        });
+        Object.keys(this.devs).forEach((dev) => {
+          if (!this.devs[dev].notes[day.format("MM/DD")]) {
+            this.devs[dev].notes[day.format("MM/DD")] = {
+              yesterday: "",
+              today: "",
+              blockers: "",
+            };
+          }
         });
       }
       this.availableDates = this.availableDates.reverse();
@@ -213,5 +232,7 @@ export default {
 <style scoped>
 #home {
   height: 100%;
+  display: flex;
+  justify-content: center;
 }
 </style>
