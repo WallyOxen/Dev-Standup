@@ -27,7 +27,7 @@
             </v-list-item>
             <v-divider :key="dev.id + 'divider'" />
           </template>
-          <v-list-item>
+          <v-list-item v-if="!loading">
             <v-list-item-content>
               <v-list-item-title>Add a Developer</v-list-item-title>
               <v-text-field
