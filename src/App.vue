@@ -7,15 +7,21 @@
       color="grey lighten-3"
       mini-variant
     >
-      <router-link v-for="route in routes" :key="route.path" :to="route.path">
-        <v-icon
-          :color="`grey ${route.path === $route.path ? 'darken' : 'lighten'}-1`"
-          :size="route.path === $route.path ? 36 : 20"
-          class="d-block text-center mx-auto mb-9"
-        >
-          {{ route.icon }}
-        </v-icon>
-      </router-link>
+      <v-tooltip v-for="route in routes" :key="route.path" right>
+        <template v-slot:activator="{ on }">
+          <router-link :to="route.path">
+            <v-icon
+              v-on="on"
+              :color="route.path === $route.path ? route.color : ''"
+              :size="route.path === $route.path ? 36 : 20"
+              class="d-block text-center mx-auto mb-9"
+            >
+              {{ route.icon }}
+            </v-icon>
+          </router-link>
+        </template>
+        <span>{{ route.name }}</span>
+      </v-tooltip>
     </v-navigation-drawer>
 
     <v-main>
@@ -34,11 +40,13 @@ export default {
         name: "Notes",
         path: "/",
         icon: "mdi-text",
+        color: "purple",
       },
       {
         name: "Users",
         path: "/users",
         icon: "mdi-account-outline",
+        color: "orange",
       },
     ],
   }),
