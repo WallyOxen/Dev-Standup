@@ -1,6 +1,6 @@
 <template>
   <div id="users">
-    <v-card>
+    <v-card width="90vw">
       <v-card-title class="d-flex justify-center">Developers</v-card-title>
       <v-card-text>
         <v-progress-linear v-if="loading" color="orange" indeterminate />
@@ -11,25 +11,37 @@
                 {{ dev.name }}
               </v-list-item-content>
               <v-list-item-action v-if="dev.left" style="position: absolute">
-                <v-btn icon @click="join(dev.id)">
-                  <v-icon color="error" large> mdi-close </v-icon>
-                </v-btn>
+                <v-tooltip right>
+                  <template v-slot:activator="{ on }">
+                    <v-btn icon @click="join(dev.id)" v-on="on">
+                      <v-icon color="success" large> mdi-check </v-icon>
+                    </v-btn>
+                  </template>
+                  <span>Dev Joined</span>
+                </v-tooltip>
               </v-list-item-action>
 
               <v-list-item-action
                 v-if="!dev.left"
                 style="position: absolute; right: 0"
               >
-                <v-btn icon @click="leave(dev.id)">
-                  <v-icon color="error" large> mdi-close </v-icon>
-                </v-btn>
+                <v-tooltip left>
+                  <template v-slot:activator="{ on }">
+                    <v-btn icon @click="leave(dev.id)" v-on="on">
+                      <v-icon color="error" large> mdi-close </v-icon>
+                    </v-btn>
+                  </template>
+                  <span>Dev Left</span>
+                </v-tooltip>
               </v-list-item-action>
             </v-list-item>
             <v-divider :key="dev.id + 'divider'" />
           </template>
-          <v-list-item v-if="!loading">
-            <v-list-item-content>
-              <v-list-item-title>Add a Developer</v-list-item-title>
+          <v-list-item v-if="!loading" class="d-flex justify-center">
+            <v-list-item-content style="max-width: 500px">
+              <v-list-item-title style="text-align: center">
+                Add a Developer
+              </v-list-item-title>
               <v-text-field
                 label="Name"
                 v-model="newDevName"
@@ -87,5 +99,7 @@ export default {
 <style>
 #users {
   height: 100%;
+  display: flex;
+  justify-content: center;
 }
 </style>
