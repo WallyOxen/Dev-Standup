@@ -25,8 +25,9 @@
                     {{ dev.name }}
                     <v-icon
                       class="ml-4"
-                      @click.stop="setOut(dev.id)"
+                      @click.stop="setOut(dev.id, $event)"
                       color="warning"
+                      :disabled="today !== selectedDate"
                     >
                       mdi-account-arrow-right-outline
                     </v-icon>
@@ -193,11 +194,11 @@ export default {
         });
         Object.keys(this.devs).forEach((dev) => {
           if (!this.devs[dev].notes[day.format("MM/DD")]) {
-            this.devs[dev].notes[day.format("MM/DD")] = {
+            this.$set(this.devs[dev].notes, day.format("MM/DD"), {
               yesterday: "",
               today: "",
               blockers: "",
-            };
+            });
           }
         });
       }
